@@ -1,11 +1,11 @@
 package calculator
 
-import kotlin.math.pow
 import kotlin.system.exitProcess
+import java.math.BigInteger
 
-val variables = mutableMapOf<String, Int>()
-var assignmentProcessed = false
+val variables = mutableMapOf<String, BigInteger>()
 val symbols = mapOf("+" to 1, "-" to 1, "*" to 2, "/" to 2, "^" to 3, "(" to 0 )
+var assignmentProcessed = false
 fun main() {
     while(true){
         val input = readln()
@@ -23,15 +23,16 @@ fun main() {
             input.count { it == '(' }  != input.count { it == ')' } -> { println("Invalid expression"); continue }
         }
         val isAssignment = input.contains("=")
-        val regex = "(?<=op)|(?=op)".replace("op", "[-+*/()]").toRegex()
+        val regex = "(?<=op)|(?=op)".replace("op", "[-+*/()]").toRegex()//i dont't really know ?<=
         val result = when {
             isAssignment -> assign(input.replace("\\s+".toRegex(),"").split("="))
             else -> calculate(input.split(regex).toMutableList())
         }
-        if (!assignmentProcessed) println(result)
+        if (!assignmentProcessed) println(result) //if assignment was processed it should display nothing
         assignmentProcessed = false
     }
 }
+fun getVariableValue(key: String): String = if (key.matches("\\d+".toRegex())) key else validIdentifier(key)
 fun validIdentifier(name: String) = if (!name.matches("\\s*[a-zA-Z]+\\s*".toRegex())) "Invalid Identifier" else getValue(name)
 fun getValue(key: String): String = if (!variables.containsKey(key)) "Unknown variable" else variables[key].toString()
 fun assign(values: List<String>): String {
@@ -39,7 +40,7 @@ fun assign(values: List<String>): String {
         if (!values[0].matches("[a-zA-Z]+".toRegex())) "Invalid identifier"
         else if (!values[1].matches("[+-]?([a-zA-Z]+|\\d+)".toRegex())) "Invalid assignment"
         else {
-            variables[values[0]] = values[1].toInt()
+            variables[values[0]] = values[1].toBigInteger()
             assignmentProcessed = true
             ""
         }
@@ -56,7 +57,7 @@ fun calculate(input: MutableList<String>): String {
     input.forEach { values.add(it.replace("\\s+".toRegex(),"")) }
     values = values.filter{ it != "" }.toMutableList()
     var removed = 0
-    var i = 1;
+    var i = 1
     do{
         while (true) {
             when {
@@ -72,16 +73,14 @@ fun calculate(input: MutableList<String>): String {
         }
         i++
     } while (i < values.lastIndex)
-    for (i in values.indices){
-        if (!values[i].matches("([+-]+|[*/^]|\\(|\\)|\\w+|\\d+)".toRegex())) return "Invalid expression"
-        if (values[i].matches("[+-]+".toRegex()))
-            values[i] = if (values[i].count { it == '-' } % 2 == 0) "+" else "-"
-        if (values[i].matches("[a-zA-Z]+".toRegex())) values[i] = getNextValue(values[i])
+    for (x in values.indices){
+        if (!values[x].matches("([+-]+|[*/^]|\\(|\\)|\\w+|\\d+)".toRegex())) return "Invalid expression"
+        if (values[x].matches("[+-]+".toRegex()))
+            values[x] = if (values[x].count { it == '-' } % 2 == 0) "+" else "-"
+        if (values[x].matches("[a-zA-Z]+".toRegex())) values[x] = getVariableValue(values[x])
     }
     return postfix2Answer(infix2Postfix(values))
 }
-fun getNextValue(key: String): String = if (key.matches("\\d+".toRegex())) key else validIdentifier(key)
-//prints invalid expression if there is a invalid or unknown variable in an expression a  + 4r + a
 fun infix2Postfix (values: MutableList<String>): MutableList<String> {
     var top = -1
     val postfix = mutableListOf<String>()
@@ -111,16 +110,16 @@ fun infix2Postfix (values: MutableList<String>): MutableList<String> {
 }
 fun postfix2Answer (values: MutableList<String>): String {
     var top = -1
-    val stack = mutableListOf<Int>()
+    val stack = mutableListOf<BigInteger>()
     for(i in values.indices) {
-        if (values[i].matches("[+-]?\\d+".toRegex())) { stack.add(values[i].toInt()); top++ }
+        if (values[i].matches("[+-]?\\d+".toRegex())) { stack.add(values[i].toBigInteger()); top++ }
         else if ( symbols.containsKey(values[i])) {
             stack[top - 1] = when(values[i]) {
                 "+" -> stack[top] + stack[top - 1]
                 "-" -> stack[top - 1] - stack[top]
                 "*" -> stack[top] * stack[top - 1]
                 "/" -> stack[top - 1] / stack[top]
-                "^" -> stack[top].toDouble().pow(stack[top - 1]).toInt()
+                "^" -> stack[top].toBigDecimal().pow(stack[top - 1].toInt()).toBigInteger()
                 else -> exitProcess(0)
             }
             stack.removeAt(top)
